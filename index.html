@@ -316,13 +316,14 @@ reset();
 
 /* ---------- input: touch ---------- */
 const BTN = { // Xbox diamond, right side
-  Y:{x:398,y:150,c:'#e8c832',p:'straight'},
-  X:{x:354,y:196,c:'#2a7de0',p:'jab'},
-  B:{x:442,y:196,c:'#d42a2a',p:'hookR'},
-  A:{x:398,y:242,c:'#37c24a',p:'hookL'},
-  r:24
+  Y:{x:398,y:150,c:'#9c8426',p:'straight'},
+  X:{x:354,y:196,c:'#2f5f9e',p:'jab'},
+  B:{x:442,y:196,c:'#96333a',p:'hookR'},
+  A:{x:398,y:242,c:'#3a7d44',p:'hookL'},
+  r:24,   // touch hit radius (generous)
+  vr:15   // visual radius (compact)
 };
-const BLK={x:376,y:219,r:16}; // BLOCK button (hold): between X and A
+const BLK={x:376,y:219,r:17,vr:10}; // BLOCK button (hold): between X and A
 const MUTE={x:446,y:42,w:26,h:18};
 let joyId=null, joyAX=0, joyAY=0, joyDX=0, joyDY=0, joyActive=false;
 const btnTouch={}; // key -> touch id currently pressing
@@ -635,14 +636,14 @@ function drawTouchUI(){
   if(joyActive){
     ctx.globalAlpha=0.5;
     ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(joyAX,joyAY,34,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(joyAX,joyAY,24,0,7); ctx.stroke();
     ctx.fillStyle='#fff';
-    ctx.beginPath(); ctx.arc(joyAX+joyDX*34,joyAY+joyDY*34,14,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(joyAX+joyDX*24,joyAY+joyDY*24,10,0,7); ctx.fill();
     ctx.globalAlpha=1;
   } else {
     ctx.globalAlpha=0.28;
     ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(92,206,30,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(92,206,22,0,7); ctx.stroke();
     ctx.globalAlpha=1;
   }
   // diamond buttons
@@ -650,25 +651,25 @@ function drawTouchUI(){
     const b=BTN[k], pressed=btnTouch[k]!=null;
     ctx.globalAlpha=pressed?1:0.82;
     ctx.fillStyle='rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.arc(b.x,b.y,BTN.r+3,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x,b.y,BTN.vr+3,0,7); ctx.fill();
     ctx.fillStyle=b.c;
-    ctx.beginPath(); ctx.arc(b.x,b.y,BTN.r,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x,b.y,BTN.vr,0,7); ctx.fill();
     ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.beginPath(); ctx.arc(b.x-6,b.y-8,9,Math.PI,0); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x-4,b.y-5,6,Math.PI,0); ctx.fill();
     ctx.globalAlpha=1;
-    textOutline(k,b.x,b.y-9,3,'#fff','center');
+    textOutline(k,b.x,b.y-7,3,'#fff','center');
   }
   // block button (hold) — between X and A
   { const pressed=blkTouchId!=null;
     ctx.globalAlpha=pressed?1:0.85;
     ctx.fillStyle='rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.arc(BLK.x,BLK.y,BLK.r+3,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(BLK.x,BLK.y,BLK.vr+3,0,7); ctx.fill();
     ctx.fillStyle=pressed?'#8fb8dd':'#4a6a8a';
-    ctx.beginPath(); ctx.arc(BLK.x,BLK.y,BLK.r,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(BLK.x,BLK.y,BLK.vr,0,7); ctx.fill();
     ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.beginPath(); ctx.arc(BLK.x-4,BLK.y-6,6,Math.PI,0); ctx.fill();
+    ctx.beginPath(); ctx.arc(BLK.x-3,BLK.y-4,4,Math.PI,0); ctx.fill();
     ctx.globalAlpha=1;
-    textOutline('BLK',BLK.x,BLK.y-6,2,'#fff','center');
+    textOutline('BLK',BLK.x,BLK.y-4,2,'#fff','center');
   }
   // mute button
   px(MUTE.x,MUTE.y,MUTE.w,MUTE.h,muted?'#5a1f1f':'#1d2b1d');
