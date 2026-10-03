@@ -10,7 +10,8 @@
   body { display:flex; align-items:center; justify-content:center; font-family:monospace; }
   #wrap { position:relative; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
   canvas { image-rendering:pixelated; image-rendering:crisp-edges; background:#000;
-           width:min(100vw, 177.78vh); height:min(56.25vw, 100vh); display:block; touch-action:none; }
+           width:min(100vw, 177.78vh); height:min(56.25vw, 100vh); display:block; touch-action:none;
+           user-select:none; -webkit-user-select:none; }
   #hint { position:absolute; bottom:6px; left:0; right:0; text-align:center; color:#777; font-size:11px; pointer-events:none; }
 </style>
 </head>
@@ -328,13 +329,18 @@ const BLK={x:376,y:219,r:17,vr:10}; // BLOCK button (hold): between X and A
 const MUTE={x:446,y:42,w:26,h:18};
 let joyId=null, joyAX=0, joyAY=0, joyDX=0, joyDY=0, joyActive=false;
 const btnTouch={}; // key -> touch id currently pressing
-let blkTouchId=null; // touch id currently holding BLOCK
+const blkTouchIds=new Set(); // touch ids LOCKED to BLOCK for their whole life: a touch that starts on BLK can never fire a punch
+let blkMouse=false; // desktop mouse holding BLOCK
+let blkKey=false;   // keyboard holding BLOCK
+function blkHeld(){ return blkTouchIds.size>0||blkMouse||blkKey; } // any live block hold
+function syncBlock(){ if(typeof player!=='undefined'&&player) player.blocking=blkHeld(); } // blocking derived from live holds — never cleared spuriously
 function toGame(e){
   const r=cv.getBoundingClientRect();
   return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H };
 }
 function tryPunch(f,key){
   if(phase!=='fight'||f.down||f.punch||f.st<4||f.blocking||f.getUpT>0) return;
+  if(f.isPlayer&&blkHeld()) return; // belt and suspenders: holding BLK can NEVER punch, even if the flag lagged
   const P=PUNCHES[key];
   f.st=Math.max(0,f.st-P.cost);
   f.punch={key,t:P.dur,dur:P.dur,hitDone:false};
@@ -349,7 +355,7 @@ cv.addEventListener('touchstart',function(e){
     if(p.x>=MUTE.x&&p.x<=MUTE.x+MUTE.w&&p.y>=MUTE.y&&p.y<=MUTE.y+MUTE.h){ muted=!muted; continue; }
     // block button (hold) — between X and A, checked first for priority
     { const dx=p.x-BLK.x, dy=p.y-BLK.y;
-      if(dx*dx+dy*dy<=BLK.r*BLK.r){ blkTouchId=t.identifier; player.blocking=true; continue; } }
+      if(dx*dx+dy*dy<=BLK.r*BLK.r){ blkTouchIds.add(t.identifier); player.blocking=true; continue; } }
     // diamond buttons
     let hitBtn=null;
     for(const k of ['Y','X','B','A']){
@@ -376,9 +382,10 @@ cv.addEventListener('touchmove',function(e){
 function touchEnd(e){
   for(const t of e.changedTouches){
     if(t.identifier===joyId){ joyId=null; joyDX=0; joyDY=0; joyActive=false; }
-    if(t.identifier===blkTouchId){ blkTouchId=null; player.blocking=false; }
+    blkTouchIds.delete(t.identifier); // release of a BLK-locked touch (touchcancel handled the same)
     for(const k in btnTouch) if(btnTouch[k]===t.identifier) delete btnTouch[k];
   }
+  syncBlock(); // recompute from live holds — a stray end/cancel never kills an active hold
 }
 cv.addEventListener('touchend',touchEnd); cv.addEventListener('touchcancel',touchEnd);
 // mouse support for desktop testing of buttons
@@ -387,13 +394,14 @@ cv.addEventListener('mousedown',function(e){
   const p=toGame(e);
   if(p.x>=MUTE.x&&p.x<=MUTE.x+MUTE.w&&p.y>=MUTE.y&&p.y<=MUTE.y+MUTE.h){ muted=!muted; return; }
   { const dx=p.x-BLK.x, dy=p.y-BLK.y;
-    if(dx*dx+dy*dy<=BLK.r*BLK.r){ player.blocking=true; return; } }
+    if(dx*dx+dy*dy<=BLK.r*BLK.r){ blkMouse=true; player.blocking=true; return; } }
   for(const k of ['Y','X','B','A']){
     const b=BTN[k], dx=p.x-b.x, dy=p.y-b.y;
     if(dx*dx+dy*dy<=BTN.r*BTN.r){ tryPunch(player,BTN[k].p); return; }
   }
 });
-addEventListener('mouseup',function(){ player.blocking=false; });
+addEventListener('mouseup',function(){ blkMouse=false; syncBlock(); });
+cv.addEventListener('contextmenu',function(e){ e.preventDefault(); }); // no long-press menu stealing the hold
 
 /* ---------- input: keyboard ---------- */
 const keys={};
@@ -408,14 +416,14 @@ addEventListener('keydown',function(e){
   }
   const k=e.key.toLowerCase();
   if(k==='m'){ muted=!muted; return; }
-  if(k===' '||k==='l'){ player.blocking=true; return; }
+  if(k===' '||k==='l'){ blkKey=true; player.blocking=true; return; }
   if(k==='j') tryPunch(player,'jab');
   else if(k==='k') tryPunch(player,'straight');
   else if(k==='u') tryPunch(player,'hookL');
   else if(k==='i') tryPunch(player,'hookR');
 });
 addEventListener('keyup',function(e){ keys[e.key.toLowerCase()]=false;
-  if(e.key===' '||e.key.toLowerCase()==='l') player.blocking=false; });
+  if(e.key===' '||e.key.toLowerCase()==='l'){ blkKey=false; syncBlock(); } });
 function keyMove(){
   let x=0,y=0;
   if(keys['a']||keys['arrowleft']) x-=1;
@@ -694,7 +702,7 @@ function drawTouchUI(){
     textOutline(k,b.x,b.y-7,3,'#fff','center');
   }
   // block button (hold) — between X and A
-  { const pressed=blkTouchId!=null;
+  { const pressed=blkTouchIds.size>0;
     ctx.globalAlpha=pressed?1:0.85;
     ctx.fillStyle='rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.arc(BLK.x,BLK.y,BLK.vr+3,0,7); ctx.fill();
