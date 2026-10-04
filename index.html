@@ -23,7 +23,7 @@
 <script>
 "use strict";
 /* ================= STICK AND MOVE — playable test build ================= */
-const BUILDV='v10'; // bump every publish so he can confirm he's on the latest build
+const BUILDV='v11'; // bump every publish so he can confirm he's on the latest build
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -482,8 +482,8 @@ function moveFighter(f,dt){
 function separate(){
   // fighters can't pass through each other — soft minimum infighting distance
   const dx=ai.x-player.x, adx=Math.abs(dx);
-  if(adx<50&&(Math.abs(ai.y-player.y)<30)){
-    const push=(50-adx)/2, s=dx>=0?1:-1;
+  if(adx<58&&(Math.abs(ai.y-player.y)<30)){
+    const push=(58-adx)/2, s=dx>=0?1:-1;
     player.x-=push*s; ai.x+=push*s;
     player.x=Math.max(RING.x0,Math.min(RING.x1,player.x));
     ai.x=Math.max(RING.x0,Math.min(RING.x1,ai.x));
@@ -658,7 +658,7 @@ function drawFighter(f){
   const cell=f.cells[pickCell(f)];
   const bob=f.moving?Math.abs(Math.sin(f.bobT*9))*1.6:Math.sin(f.bobT*2.2)*0.8;
   let lx=f.x;
-  if(f.punch){ const pr=1-f.punch.t/f.punch.dur; lx+=Math.sin(pr*Math.PI)*8*f.facing; }
+  if(f.punch){ const pr=1-f.punch.t/f.punch.dur; lx+=Math.sin(pr*Math.PI)*2*f.facing; }
   ellipse(f.x,f.y+1,22,4,'#000',0.3); // shadow stays planted
   ctx.save();
   ctx.translate(Math.round(lx),Math.round(f.y-bob));
